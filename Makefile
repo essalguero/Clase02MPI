@@ -1,4 +1,4 @@
-OBJS=main.o
+OBJS=main.o operaciones.o
 BIN=main
 
 
