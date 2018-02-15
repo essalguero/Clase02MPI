@@ -48,8 +48,12 @@ void master(int argc, char** argv, int rank, int nproc)
 	// Mensajes Recibiendo Resultados
 	for(int slave = 1; slave < nproc; ++slave)
 	{
-		MPI_Recv(&(matRes[0][0]), numFilas * numColumnas, MPI_INT, slave, TAG_DATO, MPI_COMM_WORLD, &status);
+		MPI_Recv(&(matRes[0][0]), numFilas * numColumnas, MPI_INT, slave, 
+			 TAG_DATO, MPI_COMM_WORLD, &status);
 	}
+
+	printf("MASTER: matriz multiplicada: \n");
+	imprimeMatriz(&(matRes[0][0]), numFilas, numColumnas);
 	
 }
 
@@ -73,16 +77,19 @@ void esclavo(int argc, char** argv, int rank, int nproc)
 	// Recibir mensajes mandados por master
 	MPI_Recv(&numFilas, 1, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
 	MPI_Recv(&numColumnas, 1, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
-	MPI_Recv(mat1, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
-	MPI_Recv(mat2, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
-	MPI_Recv(&operacion, 1, MPI_INT, master, TAG_OPERACION, MPI_COMM_WORLD, &status);
-	
-	
+
+
 	mat1 = (int*)malloc(numFilas * numColumnas * sizeof(int));
 	mat2 = (int*)malloc(numFilas * numColumnas * sizeof(int));
 
 	// Declarar variable para guardar el resultado
 	matRes = (int*)malloc(numFilas * numColumnas * sizeof(int));
+
+
+	MPI_Recv(mat1, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
+	MPI_Recv(mat2, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
+	MPI_Recv(&operacion, 1, MPI_INT, master, TAG_OPERACION, MPI_COMM_WORLD, &status);
+	
 
 	switch(operacion)
 	{

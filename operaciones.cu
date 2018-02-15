@@ -3,6 +3,18 @@
 
 #include "operaciones.h"
 
+void imprimeMatriz(int* mat, int numFilas, int numColumnas)
+{
+	for(int i = 0; i < numFilas; ++i)
+	{
+		for(int j = 0; j < numColumnas; ++j)
+		{
+			printf("%d,", mat[i * numFilas + j]);
+		}
+		printf("\n");
+	}
+}
+
 int multiplicarVectores(int* v1, int* v2, int size)
 {
 	int resultado = 0;
