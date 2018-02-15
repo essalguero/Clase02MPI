@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
-
 #include "operaciones.h"
-
 
 #define TAG_DATO 0
 #define TAG_OPERACION 1
@@ -11,130 +9,144 @@
 #define OP_ADD 0
 #define OP_MUL 1
 
+
+
 void master(int argc, char** argv, int rank, int nproc)
 {
-	int numFilas = 100;
-	int numColumnas = 100;
-	int mat1[numFilas][numColumnas];
-	int mat2[numFilas][numColumnas];
-	int matRes[numFilas][numColumnas];
 
-	int operacion = OP_MUL;
+	int numFilas=100;
+	int numColumnas=100;
 
+	int* mat1=(int*)malloc(sizeof(int)*numFilas*numColumnas);
+	int* mat2=(int*)malloc(sizeof(int)*numFilas*numColumnas);
+	int* matRes=(int*)malloc(sizeof(int)*numFilas*numColumnas);
+
+	int operacion=OP_MUL;
 	MPI_Status status;
-	
-	//Inicializa las matrices
-	for(int i = 0; i < 100; ++i)
-	{
-		for(int j = 0; j < 100; ++j)
+
+	int subMatrizFilas=numFilas/(nproc-1);
+        int resto=numFilas%(nproc-1);
+	subMatrizFilas++;
+	for(int i=0;i<numFilas;i++)
+		for(int j=0;j<numColumnas;j++)
 		{
-			mat1[i][j] = 1;
-			mat2[i][j] = 1;
+			mat1[i*numFilas + j]=1;
+			mat2[i*numFilas + j]=1;
 		}
-	}
 
-	// Mensajes pidiendo operaciones
-	for(int slave = 1; slave < nproc; ++slave)
+	for(int slave=1;slave<nproc;slave++)
 	{
-		MPI_Send(&numFilas, 1, MPI_INT, slave, TAG_DATO, MPI_COMM_WORLD);
-		MPI_Send(&numColumnas, 1, MPI_INT, slave, TAG_DATO, MPI_COMM_WORLD);
-		MPI_Send(&(mat1[0][0]), numFilas * numColumnas, MPI_INT, slave, TAG_DATO, MPI_COMM_WORLD);
-		MPI_Send(&(mat2[0][0]), numFilas * numColumnas, MPI_INT, slave, TAG_DATO, MPI_COMM_WORLD);
+		if((slave-1)==resto) subMatrizFilas --;
+		MPI_Send(&numFilas,1,MPI_INT,slave,TAG_DATO,MPI_COMM_WORLD);
+		MPI_Send(&numColumnas,1,MPI_INT,slave,TAG_DATO,MPI_COMM_WORLD);
+		MPI_Send(&numColumnas,1,MPI_INT,slave,
+				TAG_DATO,MPI_COMM_WORLD);
+		MPI_Send(&subMatrizFilas,1,MPI_INT,slave,
+				TAG_DATO,MPI_COMM_WORLD);
+
+		MPI_Send(mat1,numFilas*numColumnas,MPI_INT,slave,
+				TAG_DATO,MPI_COMM_WORLD);
+		MPI_Send(mat2,subMatrizFilas*numColumnas,MPI_INT,slave,
+				TAG_DATO,MPI_COMM_WORLD);
+		MPI_Send(&operacion,1,MPI_INT,slave,
+				TAG_OPERACION,MPI_COMM_WORLD);
 		
-		// Solicitar operacion
-		MPI_Send(&operacion, 1, MPI_INT, slave, TAG_OPERACION, MPI_COMM_WORLD);
 	}
 
-	// Mensajes Recibiendo Resultados
-	for(int slave = 1; slave < nproc; ++slave)
+	subMatrizFilas++;
+	int indexCount=0;
+	for(int slave=1;slave<nproc;slave++)
 	{
-		MPI_Recv(&(matRes[0][0]), numFilas * numColumnas, MPI_INT, slave, 
-			 TAG_DATO, MPI_COMM_WORLD, &status);
+		if((slave-1)==resto) subMatrizFilas --;
+
+		MPI_Recv(&(matRes[indexCount]),subMatrizFilas*numColumnas,MPI_INT,slave,
+				TAG_DATO,MPI_COMM_WORLD,&status);
+
+		indexCount+=subMatrizFilas*numColumnas;
 	}
 
-	printf("MASTER: matriz multiplicada: \n");
-	imprimeMatriz(&(matRes[0][0]), numFilas, numColumnas);
-	
+	printf("MASTER: matriz multiplicada:\n");
+	imprimeMatriz(matRes,numFilas,numColumnas);	
 }
+
 
 void esclavo(int argc, char** argv, int rank, int nproc)
 {
+		int operacion=0;
+		int numFilasM1=0;
+		int numColumnasM1=0;
+		int numFilasM2=0;
+		int numColumnasM2=0;
+		int* mat1;
+		int* mat2;
+		int* matRes;
+		MPI_Status status;
+		MPI_Recv(&numFilasM1,1,MPI_INT,0,
+			TAG_DATO,MPI_COMM_WORLD,&status);
+		MPI_Recv(&numColumnasM1,1,MPI_INT,0,
+			TAG_DATO,MPI_COMM_WORLD,&status);
+		MPI_Recv(&numFilasM2,1,MPI_INT,0,
+			TAG_DATO,MPI_COMM_WORLD,&status);
+		MPI_Recv(&numColumnasM2,1,MPI_INT,0,
+			TAG_DATO,MPI_COMM_WORLD,&status);
 
-	int master = 0;
+		mat1=(int*)malloc(numFilasM1*numColumnasM1*sizeof(int));
+		mat2=(int*)malloc(numFilasM2*numColumnasM2*sizeof(int));
 
-	int numFilas;
-	int numColumnas;
+		MPI_Recv(mat1,numFilasM1*numColumnasM1,MPI_INT,0,
+				TAG_DATO,MPI_COMM_WORLD,&status);
+		MPI_Recv(mat2,numFilasM2*numColumnasM2,MPI_INT,0,
+				TAG_DATO,MPI_COMM_WORLD,&status);
+		MPI_Recv(&operacion,1,MPI_INT,0,
+				TAG_OPERACION,MPI_COMM_WORLD,&status);
 
-	int* mat1;
-	int* mat2;
-
-	int* matRes;
-	
-	int operacion;
-	
-	MPI_Status status;
-
-	// Recibir mensajes mandados por master
-	MPI_Recv(&numFilas, 1, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
-	MPI_Recv(&numColumnas, 1, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
-
-
-	mat1 = (int*)malloc(numFilas * numColumnas * sizeof(int));
-	mat2 = (int*)malloc(numFilas * numColumnas * sizeof(int));
-
-	// Declarar variable para guardar el resultado
-	matRes = (int*)malloc(numFilas * numColumnas * sizeof(int));
-
-
-	MPI_Recv(mat1, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
-	MPI_Recv(mat2, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD, &status);
-	MPI_Recv(&operacion, 1, MPI_INT, master, TAG_OPERACION, MPI_COMM_WORLD, &status);
-	
-
-	switch(operacion)
-	{
-		case OP_ADD:
-			printf("No implementada suma\n");
+		matRes=(int*)malloc(numFilasM1*numColumnasM2*sizeof(int));
+		switch(operacion)
+		{
+			case OP_ADD:
+				printf("no implementada suma\n");
 			break;
-		case OP_MUL:
-			multiplicarMatrices(mat1, mat2, matRes, numFilas, numColumnas);
+			case OP_MUL: 
+				multiplicaMatrices(mat1,mat2,matRes,
+					numFilasM1,numColumnasM1,numFilasM2,numColumnasM2);
 			break;
-		default:
-			printf("No implementada suma\n");
-	}
+			default:
+				printf("no implementada suma\n");
+			break;
+		};
+		MPI_Send(matRes,numFilasM1*numColumnasM2,MPI_INT,0,
+				TAG_DATO,MPI_COMM_WORLD);
 
-	MPI_Send(matRes, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD);
+	char* nombreFich=(char*)malloc(1000);
+	/*sprintf(nombreFich,"/home/estudiante/profesor/%dmatrixout.bin",rank);
+	FILE* saved=fopen(nombreFich,"w");
+	fwrite(matRes,numFilasM1*numColumnasM2,sizeof(int),saved);
+	fclose(saved);*/
 
-	char* nombreFich = (char *)malloc(100);
-	sprintf(nombreFich, "/home/estudiante/Eugenio.Salguero/bin/%dmatrixoutEugenio.bin", rank);
-	FILE* saved = fopen(nombreFich, "w");
-	fwrite(matRes, numFilas * numColumnas, sizeof(int), saved);
-	fclose(saved);
-
+		
 }
 
-int main(int argc, char** argv)
+int main (int argc,char** argv)
 {
-	// en funcion del rank se pasa a ser maestro o esclavo
+
 	int rank;
 	int nproc;
-
-	MPI_Init(&argc, &argv);
-	MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	
+	MPI_Init(&argc,&argv);
+	MPI_Comm_size(MPI_COMM_WORLD,&nproc);
+	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 	switch(rank)
 	{
-		case 0: master(argc, argv, rank, nproc);
+		case 0: master(argc,argv,rank, nproc);
 			break;
-		
-		default: esclavo(argc, argv, rank, nproc);
+		default:
+			esclavo(argc,argv,rank, nproc);
 			break;
-		
-	}
-
-
+	};
 	MPI_Finalize();
-
 	return 0;
+
+
+
 }
+
+

@@ -3,6 +3,6 @@
 
 void imprimeMatriz(int* mat, int numFilas, int numColumnas);
 int multiplicarVectores(int* v1, int* v2, int size);
-void multiplicarMatrices(int* m1, int* m2, int* mRes, int numFilas, int numColumnas);
+void multiplicaMatrices(int* m1,int* m2, int* mRes, int numFilasM1, int numColumnasM1, int numFilasM2, int numColumnasM2);
 
 #endif
