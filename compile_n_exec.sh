@@ -10,7 +10,7 @@ DATA_FILES=
 make clean
 make
 
-HOSTS=$(cat host_file)
+HOSTS=$(cat copy_host_file)
 
 for HOST in $HOSTS
 do

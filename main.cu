@@ -105,6 +105,12 @@ void esclavo(int argc, char** argv, int rank, int nproc)
 
 	MPI_Send(matRes, numFilas * numColumnas, MPI_INT, master, TAG_DATO, MPI_COMM_WORLD);
 
+	char* nombreFich = (char *)malloc(100);
+	sprintf(nombreFich, "/home/estudiante/Eugenio.Salguero/bin/%dmatrixoutEugenio.bin", rank);
+	FILE* saved = fopen(nombreFich, "w");
+	fwrite(matRes, numFilas * numColumnas, sizeof(int), saved);
+	fclose(saved);
+
 }
 
 int main(int argc, char** argv)
